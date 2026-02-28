@@ -1,0 +1,8 @@
+# Dependencies and caches
+.claude/
+.auto-claude/
+
+# Releases — track plugin XML exports
+releases/*
+!releases/.gitkeep
+!releases/X Bulk Dev Tools *.xml
