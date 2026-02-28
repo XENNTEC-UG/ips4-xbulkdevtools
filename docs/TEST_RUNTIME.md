@@ -44,7 +44,26 @@
 5. Verify auto-download starts (hidden iframes)
 6. Verify individual download links also work
 
-### 6. Error Handling
+### 6. Plugin Bulk Download — Individual
 
-1. If an app has broken build state, verify other apps still process
+1. Navigate to ACP > System > Site Features > Plugins
+2. Verify sidebar shows "Bulk Download Plugins" button under More Options
+3. Click the button — dialog should open
+4. Verify all plugins are listed and pre-checked
+5. Ensure "Individual .xml files" is selected (default)
+6. Submit — MultipleRedirect should show progress
+7. Verify download results page appears with table of plugins
+8. Verify auto-download starts (hidden iframes)
+9. Verify individual download links also work
+
+### 7. Plugin Bulk Download — ZIP
+
+1. Open Bulk Download Plugins dialog
+2. Select "All in one ZIP bundle"
+3. Submit, wait for processing
+4. Click "Download All as ZIP" — should download a .zip containing .xml files
+
+### 8. Error Handling
+
+1. If an app/plugin has broken state, verify other items still process
 2. Verify error messages shown on completion
