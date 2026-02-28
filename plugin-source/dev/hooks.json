@@ -1,0 +1,10 @@
+{
+    "applicationsController": {
+        "type": "C",
+        "class": "\\IPS\\core\\modules\\admin\\applications\\applications"
+    },
+    "pluginsController": {
+        "type": "C",
+        "class": "\\IPS\\core\\modules\\admin\\applications\\plugins"
+    }
+}
