@@ -457,8 +457,10 @@ class hook475 extends _HOOK_CLASS_
 			/* Clean up session */
 			unset( $_SESSION['xbdt_plugin_ids'], $_SESSION['xbdt_plugin_built'], $_SESSION['xbdt_plugin_errors'], $_SESSION['xbdt_plugin_download_mode'] );
 
+			$pluginNames = array_column( $built, 'id' );
+			$zipName = 'X Bulk Dev Download Combined ' . mb_substr( md5( implode( ',', $pluginNames ) . time() ), 0, 8 ) . '.zip';
 			\IPS\Output::i()->sendOutput( $output, 200, 'application/zip', array(
-				'Content-Disposition' => \IPS\Output::getContentDisposition( 'attachment', 'IPS4-Plugins-Bulk-Download.zip' )
+				'Content-Disposition' => \IPS\Output::getContentDisposition( 'attachment', $zipName )
 			), FALSE, FALSE, FALSE );
 		}
 		catch ( \Error | \RuntimeException $e )

@@ -413,7 +413,7 @@ class hook474 extends _HOOK_CLASS_
 
 			$appKey      = \IPS\Request::i()->appKey;
 			$application = \IPS\Application::load( $appKey );
-			$appName     = \IPS\Member::loggedIn()->language()->addToStack( '__app_' . $appKey );
+			$appName     = \IPS\Member::loggedIn()->language()->words[ '__app_' . $appKey ] ?? $appKey;
 
 			$pharPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/' . $appKey . '.tar';
 			$download = new \PharData( $pharPath, 0, $appKey . '.tar', \Phar::TAR );
@@ -477,7 +477,7 @@ class hook474 extends _HOOK_CLASS_
 				try
 				{
 					$application = \IPS\Application::load( $appKey );
-					$appName     = \IPS\Member::loggedIn()->language()->addToStack( '__app_' . $appKey );
+					$appName     = \IPS\Member::loggedIn()->language()->words[ '__app_' . $appKey ] ?? $appKey;
 
 					$pharPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/' . $appKey . '.tar';
 					$phar     = new \PharData( $pharPath, 0, $appKey . '.tar', \Phar::TAR );
@@ -511,8 +511,9 @@ class hook474 extends _HOOK_CLASS_
 			/* Clean up session */
 			unset( $_SESSION['xbdt_apps'], $_SESSION['xbdt_processed_apps'], $_SESSION['xbdt_errors'], $_SESSION['xbdt_download_mode'] );
 
+			$zipName = 'X Bulk Dev Download Combined ' . mb_substr( md5( implode( ',', $apps ) . time() ), 0, 8 ) . '.zip';
 			\IPS\Output::i()->sendOutput( $output, 200, 'application/zip', array(
-				'Content-Disposition' => \IPS\Output::getContentDisposition( 'attachment', 'IPS4-Apps-Bulk-Download.zip' )
+				'Content-Disposition' => \IPS\Output::getContentDisposition( 'attachment', $zipName )
 			), FALSE, FALSE, FALSE );
 		}
 		catch ( \Error | \RuntimeException $e )

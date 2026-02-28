@@ -4,8 +4,8 @@
 
 | Key | Value |
 |---|---|
-| Version | 1.0.0 |
-| Long Version | 10000 |
+| Version | 1.0.1 |
+| Long Version | 10001 |
 
 ## Capabilities
 
