@@ -667,8 +667,8 @@ class hook475 extends _HOOK_CLASS_
 				}
 			}
 
-			/* Clear plugin cache so IPS picks up changes */
-			unset( \IPS\Data\Store::i()->plugins );
+			/* Clear plugin cache so IPS picks up changes on next load */
+			unset( \IPS\Data\Cache::i()->plugins );
 
 			\IPS\Output::i()->redirect(
 				\IPS\Http\Url::internal( 'app=core&module=applications&controller=plugins&do=xbdtSyncPluginVersions' ),
