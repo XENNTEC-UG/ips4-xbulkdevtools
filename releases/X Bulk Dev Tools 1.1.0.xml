@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<plugin name="X Bulk Dev Tools" version_long="10001" version_human="1.0.1" author="XENNTEC UG" website="https://xenntec.net" update_check="https://xenntec-ug.github.io/ips4-updates/xbulkdevtools.json"><hooks><hook type="C" class="\IPS\core\modules\admin\applications\applications" filename="applicationsController"><![CDATA[//<?php
+<plugin name="X Bulk Dev Tools" version_long="10100" version_human="1.1.0" author="XENNTEC UG" website="https://xenntec.net" update_check="https://xenntec-ug.github.io/ips4-updates/xbulkdevtools.json"><hooks><hook type="C" class="\IPS\core\modules\admin\applications\applications" filename="applicationsController"><![CDATA[//<?php
 /**
  * @brief		Hook on \IPS\core\modules\admin\applications\_applications
  * @author		XENNTEC UG
@@ -682,6 +682,12 @@ class hook475 extends _HOOK_CLASS_
 						'title' => 'xbdt_bulk_download_plugins',
 						'data'  => array( 'ipsDialog' => '', 'ipsDialog-title' => \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_bulk_download_plugins' ) )
 					);
+	
+					\IPS\Output::i()->sidebar['actions']['xbdt_sync_versions'] = array(
+						'icon'  => 'refresh',
+						'link'  => \IPS\Http\Url::internal( 'app=core&module=applications&controller=plugins&do=xbdtSyncPluginVersions' ),
+						'title' => 'xbdt_sync_plugin_versions',
+					);
 				}
 			}
 			catch ( \Error | \RuntimeException $e )
@@ -1237,6 +1243,250 @@ class hook475 extends _HOOK_CLASS_
 	}
 
 	/**
+	 * Sync Plugin Versions — compare dev/versions.json against DB and show mismatches
+	 *
+	 * @return	void
+	 */
+	protected function xbdtSyncPluginVersions()
+	{
+		try
+		{
+			try
+			{
+				if ( !\IPS\IN_DEV )
+				{
+					\IPS\Output::i()->error( 'not_in_dev', '2XBDT/P8', 403, '' );
+				}
+	
+				$plugins = array();
+				$hasOutOfSync = false;
+	
+				foreach ( \IPS\Plugin::plugins() as $plugin )
+				{
+					$pluginPath = \IPS\ROOT_PATH . '/plugins/' . $plugin->location;
+					$versionsFile = $pluginPath . '/dev/versions.json';
+	
+					$devLongVersion = null;
+					$devHumanVersion = null;
+	
+					if ( file_exists( $versionsFile ) )
+					{
+						$versions = json_decode( file_get_contents( $versionsFile ), TRUE );
+						if ( !empty( $versions ) )
+						{
+							/* Find the highest long version */
+							$keys = array_keys( $versions );
+							$devLongVersion = (int) max( $keys );
+							$devHumanVersion = $versions[ (string) $devLongVersion ];
+						}
+					}
+	
+					$dbLong = (int) $plugin->version_long;
+					$dbHuman = $plugin->version_human;
+					$inSync = ( $devLongVersion !== null && $devLongVersion === $dbLong && $devHumanVersion === $dbHuman );
+	
+					if ( !$inSync && $devLongVersion !== null )
+					{
+						$hasOutOfSync = true;
+					}
+	
+					$plugins[] = array(
+						'id'              => $plugin->id,
+						'name'            => $plugin->name,
+						'db_long'         => $dbLong,
+						'db_human'        => $dbHuman,
+						'dev_long'        => $devLongVersion,
+						'dev_human'       => $devHumanVersion,
+						'in_sync'         => $inSync,
+						'has_versions'    => ( $devLongVersion !== null ),
+					);
+				}
+	
+				$html = '';
+	
+				if ( $hasOutOfSync )
+				{
+					$html .= '<div class="ipsMessage ipsMessage_warning">';
+					$html .= \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_mismatch_warning' );
+					$html .= '</div><br>';
+	
+					$fixUrl = \IPS\Http\Url::internal( 'app=core&module=applications&controller=plugins&do=xbdtSyncPluginVersionsFix' )->csrf();
+					$html .= '<div class="ipsButtonBar">';
+					$html .= '<a href="' . $fixUrl . '" class="ipsButton ipsButton_primary ipsButton_medium" data-confirm><i class="fa fa-check"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_fix_all' ) . '</a>';
+					$html .= '</div><br>';
+				}
+				else
+				{
+					$html .= '<div class="ipsMessage ipsMessage_success">';
+					$html .= \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_all_ok' );
+					$html .= '</div><br>';
+				}
+	
+				$html .= '<table class="ipsTable ipsTable_zebra">';
+				$html .= '<thead><tr>';
+				$html .= '<th>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_col_plugin' ) . '</th>';
+				$html .= '<th>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_col_db_version' ) . '</th>';
+				$html .= '<th>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_col_dev_version' ) . '</th>';
+				$html .= '<th>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_col_status' ) . '</th>';
+				$html .= '</tr></thead>';
+				$html .= '<tbody>';
+	
+				foreach ( $plugins as $info )
+				{
+					$html .= '<tr>';
+					$html .= '<td>' . htmlspecialchars( $info['name'] ) . '</td>';
+					$html .= '<td>' . htmlspecialchars( $info['db_human'] ) . ' <span class="ipsType_light">(' . $info['db_long'] . ')</span></td>';
+	
+					if ( $info['has_versions'] )
+					{
+						$html .= '<td>' . htmlspecialchars( $info['dev_human'] ) . ' <span class="ipsType_light">(' . $info['dev_long'] . ')</span></td>';
+					}
+					else
+					{
+						$html .= '<td><em class="ipsType_light">' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_no_versions_file' ) . '</em></td>';
+					}
+	
+					if ( !$info['has_versions'] )
+					{
+						$html .= '<td><i class="fa fa-question-circle ipsType_light"></i> ' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_status_unknown' ) . '</td>';
+					}
+					elseif ( $info['in_sync'] )
+					{
+						$html .= '<td><i class="fa fa-check-circle" style="color: #5cb85c;"></i> ' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_status_ok' ) . '</td>';
+					}
+					else
+					{
+						$html .= '<td><i class="fa fa-exclamation-triangle" style="color: #d9534f;"></i> <strong>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_status_mismatch' ) . '</strong></td>';
+					}
+	
+					$html .= '</tr>';
+				}
+	
+				$html .= '</tbody></table>';
+	
+				\IPS\Output::i()->title  = \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_plugin_versions' );
+				\IPS\Output::i()->output = $html;
+			}
+			catch ( \Error | \RuntimeException $e )
+			{
+				if ( method_exists( get_parent_class(), __FUNCTION__ ) )
+				{
+					return \call_user_func_array( 'parent::' . __FUNCTION__, \func_get_args() );
+				}
+				else
+				{
+					throw $e;
+				}
+			}
+		}
+		catch ( \Error | \RuntimeException $e )
+		{
+			if( \defined( '\IPS\DEBUG_HOOKS' ) AND \IPS\DEBUG_HOOKS )
+			{
+				\IPS\Log::log( $e, 'hook_exception' );
+			}
+
+			if ( method_exists( get_parent_class(), __FUNCTION__ ) )
+			{
+				return \call_user_func_array( 'parent::' . __FUNCTION__, \func_get_args() );
+			}
+			else
+			{
+				throw $e;
+			}
+		}
+	}
+
+	/**
+	 * Fix out-of-sync plugin versions by updating DB to match dev/versions.json
+	 *
+	 * @return	void
+	 */
+	protected function xbdtSyncPluginVersionsFix()
+	{
+		try
+		{
+			try
+			{
+				\IPS\Session::i()->csrfCheck();
+	
+				if ( !\IPS\IN_DEV )
+				{
+					\IPS\Output::i()->error( 'not_in_dev', '2XBDT/P9', 403, '' );
+				}
+	
+				$fixed = 0;
+	
+				foreach ( \IPS\Plugin::plugins() as $plugin )
+				{
+					$pluginPath = \IPS\ROOT_PATH . '/plugins/' . $plugin->location;
+					$versionsFile = $pluginPath . '/dev/versions.json';
+	
+					if ( !file_exists( $versionsFile ) )
+					{
+						continue;
+					}
+	
+					$versions = json_decode( file_get_contents( $versionsFile ), TRUE );
+					if ( empty( $versions ) )
+					{
+						continue;
+					}
+	
+					$keys = array_keys( $versions );
+					$devLongVersion = (int) max( $keys );
+					$devHumanVersion = $versions[ (string) $devLongVersion ];
+	
+					if ( (int) $plugin->version_long !== $devLongVersion || $plugin->version_human !== $devHumanVersion )
+					{
+						\IPS\Db::i()->update( 'core_plugins', array(
+							'plugin_version_long'  => $devLongVersion,
+							'plugin_version_human' => $devHumanVersion,
+						), array( 'plugin_id=?', $plugin->id ) );
+	
+						$fixed++;
+					}
+				}
+	
+				/* Clear plugin cache so IPS picks up changes */
+				unset( \IPS\Data\Store::i()->plugins );
+	
+				\IPS\Output::i()->redirect(
+					\IPS\Http\Url::internal( 'app=core&module=applications&controller=plugins&do=xbdtSyncPluginVersions' ),
+					\IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_fixed', FALSE, array( 'sprintf' => array( $fixed ) ) )
+				);
+			}
+			catch ( \Error | \RuntimeException $e )
+			{
+				if ( method_exists( get_parent_class(), __FUNCTION__ ) )
+				{
+					return \call_user_func_array( 'parent::' . __FUNCTION__, \func_get_args() );
+				}
+				else
+				{
+					throw $e;
+				}
+			}
+		}
+		catch ( \Error | \RuntimeException $e )
+		{
+			if( \defined( '\IPS\DEBUG_HOOKS' ) AND \IPS\DEBUG_HOOKS )
+			{
+				\IPS\Log::log( $e, 'hook_exception' );
+			}
+
+			if ( method_exists( get_parent_class(), __FUNCTION__ ) )
+			{
+				return \call_user_func_array( 'parent::' . __FUNCTION__, \func_get_args() );
+			}
+			else
+			{
+				throw $e;
+			}
+		}
+	}
+
+	/**
 	 * Build plugin XML (mirrors core download logic without DB side-effects)
 	 *
 	 * @param	\IPS\Plugin	$plugin
@@ -1409,4 +1659,4 @@ class hook475 extends _HOOK_CLASS_
 		}
 	}
 }
-]]></hook></hooks><htmlFiles/><cssFiles/><jsFiles/><resourcesFiles/><lang><word key="xbdt_bulk_dev_tools" js="0">Bulk Dev Tools</word><word key="xbdt_action" js="0">Action</word><word key="xbdt_action_build" js="0">Build Application (XML, lang, themes, hooks, etc.)</word><word key="xbdt_action_compilejs" js="0">Compile JavaScript only</word><word key="xbdt_action_download" js="0"><![CDATA[Rebuild & Download (.tar)]]></word><word key="xbdt_download_mode" js="0">Download Mode</word><word key="xbdt_download_zip" js="0">All in one ZIP bundle</word><word key="xbdt_download_individual" js="0">Individual .tar files</word><word key="xbdt_apps" js="0">Applications</word><word key="xbdt_apps_desc" js="0">Custom apps are pre-selected. Core/protected apps are unchecked by default.</word><word key="xbdt_process_complete" js="0">All selected applications processed successfully.</word><word key="xbdt_building" js="0">Building: %s (%s/%s)</word><word key="xbdt_compiling_js" js="0">Compiling JS: %s (%s/%s)</word><word key="xbdt_download_results" js="0">Download Ready</word><word key="xbdt_download_results_desc" js="0">All selected applications have been rebuilt. Choose your download method:</word><word key="xbdt_download_all_zip" js="0">Download All as ZIP</word><word key="xbdt_download_tar" js="0">Download .tar</word><word key="xbdt_errors_occurred" js="0">Some items had errors during processing:</word><word key="xbdt_no_apps_selected" js="0">No applications were selected.</word><word key="xbdt_bulk_download_plugins" js="0">Bulk Download Plugins</word><word key="xbdt_plugin_download_mode" js="0">Download Mode</word><word key="xbdt_plugin_download_zip" js="0">All in one ZIP bundle</word><word key="xbdt_plugin_download_individual" js="0">Individual .xml files</word><word key="xbdt_plugins" js="0">Plugins</word><word key="xbdt_no_plugins_selected" js="0">No plugins were selected.</word><word key="xbdt_exporting_plugin" js="0">Exporting: %s (%s/%s)</word><word key="xbdt_plugin_download_results" js="0">Plugin Downloads Ready</word><word key="xbdt_plugin_download_results_desc" js="0">All selected plugins have been exported. Choose your download method:</word><word key="xbdt_plugin_download_all_zip" js="0">Download All as ZIP</word><word key="xbdt_plugin_download_xml" js="0">Download .xml</word></lang><versions><version long="10000" human="1.0.0"/><version long="10001" human="1.0.1"/></versions></plugin>
+]]></hook></hooks><htmlFiles/><cssFiles/><jsFiles/><resourcesFiles/><lang><word key="xbdt_bulk_dev_tools" js="0">Bulk Dev Tools</word><word key="xbdt_action" js="0">Action</word><word key="xbdt_action_build" js="0">Build Application (XML, lang, themes, hooks, etc.)</word><word key="xbdt_action_compilejs" js="0">Compile JavaScript only</word><word key="xbdt_action_download" js="0"><![CDATA[Rebuild & Download (.tar)]]></word><word key="xbdt_download_mode" js="0">Download Mode</word><word key="xbdt_download_zip" js="0">All in one ZIP bundle</word><word key="xbdt_download_individual" js="0">Individual .tar files</word><word key="xbdt_apps" js="0">Applications</word><word key="xbdt_apps_desc" js="0">Custom apps are pre-selected. Core/protected apps are unchecked by default.</word><word key="xbdt_process_complete" js="0">All selected applications processed successfully.</word><word key="xbdt_building" js="0">Building: %s (%s/%s)</word><word key="xbdt_compiling_js" js="0">Compiling JS: %s (%s/%s)</word><word key="xbdt_download_results" js="0">Download Ready</word><word key="xbdt_download_results_desc" js="0">All selected applications have been rebuilt. Choose your download method:</word><word key="xbdt_download_all_zip" js="0">Download All as ZIP</word><word key="xbdt_download_tar" js="0">Download .tar</word><word key="xbdt_errors_occurred" js="0">Some items had errors during processing:</word><word key="xbdt_no_apps_selected" js="0">No applications were selected.</word><word key="xbdt_bulk_download_plugins" js="0">Bulk Download Plugins</word><word key="xbdt_plugin_download_mode" js="0">Download Mode</word><word key="xbdt_plugin_download_zip" js="0">All in one ZIP bundle</word><word key="xbdt_plugin_download_individual" js="0">Individual .xml files</word><word key="xbdt_plugins" js="0">Plugins</word><word key="xbdt_no_plugins_selected" js="0">No plugins were selected.</word><word key="xbdt_exporting_plugin" js="0">Exporting: %s (%s/%s)</word><word key="xbdt_plugin_download_results" js="0">Plugin Downloads Ready</word><word key="xbdt_plugin_download_results_desc" js="0">All selected plugins have been exported. Choose your download method:</word><word key="xbdt_plugin_download_all_zip" js="0">Download All as ZIP</word><word key="xbdt_plugin_download_xml" js="0">Download .xml</word><word key="xbdt_sync_plugin_versions" js="0">Sync Plugin Versions</word><word key="xbdt_sync_mismatch_warning" js="0">Some plugins have versions in dev/versions.json that do not match the database. Click "Fix All" to update the database to match.</word><word key="xbdt_sync_all_ok" js="0">All plugin versions are in sync between dev/versions.json and the database.</word><word key="xbdt_sync_fix_all" js="0">Fix All Out-of-Sync</word><word key="xbdt_sync_col_plugin" js="0">Plugin</word><word key="xbdt_sync_col_db_version" js="0">DB Version</word><word key="xbdt_sync_col_dev_version" js="0">Dev Version</word><word key="xbdt_sync_col_status" js="0">Status</word><word key="xbdt_sync_no_versions_file" js="0">No versions.json</word><word key="xbdt_sync_status_unknown" js="0">Unknown</word><word key="xbdt_sync_status_ok" js="0">In Sync</word><word key="xbdt_sync_status_mismatch" js="0">Out of Sync</word><word key="xbdt_sync_fixed" js="0">Updated %s plugin(s) to match dev/versions.json.</word></lang><versions><version long="10000" human="1.0.0"/><version long="10001" human="1.0.1"/><version long="10100" human="1.1.0"/></versions></plugin>

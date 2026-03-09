@@ -31,4 +31,19 @@ $lang = array(
 	'xbdt_plugin_download_results_desc'  => 'All selected plugins have been exported. Choose your download method:',
 	'xbdt_plugin_download_all_zip'       => 'Download All as ZIP',
 	'xbdt_plugin_download_xml'           => 'Download .xml',
+
+	/* Sync Plugin Versions */
+	'xbdt_sync_plugin_versions'          => 'Sync Plugin Versions',
+	'xbdt_sync_mismatch_warning'         => 'Some plugins have versions in dev/versions.json that do not match the database. Click "Fix All" to update the database to match.',
+	'xbdt_sync_all_ok'                   => 'All plugin versions are in sync between dev/versions.json and the database.',
+	'xbdt_sync_fix_all'                  => 'Fix All Out-of-Sync',
+	'xbdt_sync_col_plugin'              => 'Plugin',
+	'xbdt_sync_col_db_version'          => 'DB Version',
+	'xbdt_sync_col_dev_version'         => 'Dev Version',
+	'xbdt_sync_col_status'              => 'Status',
+	'xbdt_sync_no_versions_file'        => 'No versions.json',
+	'xbdt_sync_status_unknown'          => 'Unknown',
+	'xbdt_sync_status_ok'               => 'In Sync',
+	'xbdt_sync_status_mismatch'         => 'Out of Sync',
+	'xbdt_sync_fixed'                   => 'Updated %s plugin(s) to match dev/versions.json.',
 );

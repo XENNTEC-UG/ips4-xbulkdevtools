@@ -34,6 +34,12 @@ class hook475 extends _HOOK_CLASS_
 					'title' => 'xbdt_bulk_download_plugins',
 					'data'  => array( 'ipsDialog' => '', 'ipsDialog-title' => \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_bulk_download_plugins' ) )
 				);
+
+				\IPS\Output::i()->sidebar['actions']['xbdt_sync_versions'] = array(
+					'icon'  => 'refresh',
+					'link'  => \IPS\Http\Url::internal( 'app=core&module=applications&controller=plugins&do=xbdtSyncPluginVersions' ),
+					'title' => 'xbdt_sync_plugin_versions',
+				);
 			}
 		}
 		catch ( \Error | \RuntimeException $e )
@@ -462,6 +468,212 @@ class hook475 extends _HOOK_CLASS_
 			\IPS\Output::i()->sendOutput( $output, 200, 'application/zip', array(
 				'Content-Disposition' => \IPS\Output::getContentDisposition( 'attachment', $zipName )
 			), FALSE, FALSE, FALSE );
+		}
+		catch ( \Error | \RuntimeException $e )
+		{
+			if ( method_exists( get_parent_class(), __FUNCTION__ ) )
+			{
+				return \call_user_func_array( 'parent::' . __FUNCTION__, \func_get_args() );
+			}
+			else
+			{
+				throw $e;
+			}
+		}
+	}
+
+	/**
+	 * Sync Plugin Versions — compare dev/versions.json against DB and show mismatches
+	 *
+	 * @return	void
+	 */
+	protected function xbdtSyncPluginVersions()
+	{
+		try
+		{
+			if ( !\IPS\IN_DEV )
+			{
+				\IPS\Output::i()->error( 'not_in_dev', '2XBDT/P8', 403, '' );
+			}
+
+			$plugins = array();
+			$hasOutOfSync = false;
+
+			foreach ( \IPS\Plugin::plugins() as $plugin )
+			{
+				$pluginPath = \IPS\ROOT_PATH . '/plugins/' . $plugin->location;
+				$versionsFile = $pluginPath . '/dev/versions.json';
+
+				$devLongVersion = null;
+				$devHumanVersion = null;
+
+				if ( file_exists( $versionsFile ) )
+				{
+					$versions = json_decode( file_get_contents( $versionsFile ), TRUE );
+					if ( !empty( $versions ) )
+					{
+						/* Find the highest long version */
+						$keys = array_keys( $versions );
+						$devLongVersion = (int) max( $keys );
+						$devHumanVersion = $versions[ (string) $devLongVersion ];
+					}
+				}
+
+				$dbLong = (int) $plugin->version_long;
+				$dbHuman = $plugin->version_human;
+				$inSync = ( $devLongVersion !== null && $devLongVersion === $dbLong && $devHumanVersion === $dbHuman );
+
+				if ( !$inSync && $devLongVersion !== null )
+				{
+					$hasOutOfSync = true;
+				}
+
+				$plugins[] = array(
+					'id'              => $plugin->id,
+					'name'            => $plugin->name,
+					'db_long'         => $dbLong,
+					'db_human'        => $dbHuman,
+					'dev_long'        => $devLongVersion,
+					'dev_human'       => $devHumanVersion,
+					'in_sync'         => $inSync,
+					'has_versions'    => ( $devLongVersion !== null ),
+				);
+			}
+
+			$html = '';
+
+			if ( $hasOutOfSync )
+			{
+				$html .= '<div class="ipsMessage ipsMessage_warning">';
+				$html .= \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_mismatch_warning' );
+				$html .= '</div><br>';
+
+				$fixUrl = \IPS\Http\Url::internal( 'app=core&module=applications&controller=plugins&do=xbdtSyncPluginVersionsFix' )->csrf();
+				$html .= '<div class="ipsButtonBar">';
+				$html .= '<a href="' . $fixUrl . '" class="ipsButton ipsButton_primary ipsButton_medium" data-confirm><i class="fa fa-check"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_fix_all' ) . '</a>';
+				$html .= '</div><br>';
+			}
+			else
+			{
+				$html .= '<div class="ipsMessage ipsMessage_success">';
+				$html .= \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_all_ok' );
+				$html .= '</div><br>';
+			}
+
+			$html .= '<table class="ipsTable ipsTable_zebra">';
+			$html .= '<thead><tr>';
+			$html .= '<th>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_col_plugin' ) . '</th>';
+			$html .= '<th>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_col_db_version' ) . '</th>';
+			$html .= '<th>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_col_dev_version' ) . '</th>';
+			$html .= '<th>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_col_status' ) . '</th>';
+			$html .= '</tr></thead>';
+			$html .= '<tbody>';
+
+			foreach ( $plugins as $info )
+			{
+				$html .= '<tr>';
+				$html .= '<td>' . htmlspecialchars( $info['name'] ) . '</td>';
+				$html .= '<td>' . htmlspecialchars( $info['db_human'] ) . ' <span class="ipsType_light">(' . $info['db_long'] . ')</span></td>';
+
+				if ( $info['has_versions'] )
+				{
+					$html .= '<td>' . htmlspecialchars( $info['dev_human'] ) . ' <span class="ipsType_light">(' . $info['dev_long'] . ')</span></td>';
+				}
+				else
+				{
+					$html .= '<td><em class="ipsType_light">' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_no_versions_file' ) . '</em></td>';
+				}
+
+				if ( !$info['has_versions'] )
+				{
+					$html .= '<td><i class="fa fa-question-circle ipsType_light"></i> ' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_status_unknown' ) . '</td>';
+				}
+				elseif ( $info['in_sync'] )
+				{
+					$html .= '<td><i class="fa fa-check-circle" style="color: #5cb85c;"></i> ' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_status_ok' ) . '</td>';
+				}
+				else
+				{
+					$html .= '<td><i class="fa fa-exclamation-triangle" style="color: #d9534f;"></i> <strong>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_status_mismatch' ) . '</strong></td>';
+				}
+
+				$html .= '</tr>';
+			}
+
+			$html .= '</tbody></table>';
+
+			\IPS\Output::i()->title  = \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_plugin_versions' );
+			\IPS\Output::i()->output = $html;
+		}
+		catch ( \Error | \RuntimeException $e )
+		{
+			if ( method_exists( get_parent_class(), __FUNCTION__ ) )
+			{
+				return \call_user_func_array( 'parent::' . __FUNCTION__, \func_get_args() );
+			}
+			else
+			{
+				throw $e;
+			}
+		}
+	}
+
+	/**
+	 * Fix out-of-sync plugin versions by updating DB to match dev/versions.json
+	 *
+	 * @return	void
+	 */
+	protected function xbdtSyncPluginVersionsFix()
+	{
+		try
+		{
+			\IPS\Session::i()->csrfCheck();
+
+			if ( !\IPS\IN_DEV )
+			{
+				\IPS\Output::i()->error( 'not_in_dev', '2XBDT/P9', 403, '' );
+			}
+
+			$fixed = 0;
+
+			foreach ( \IPS\Plugin::plugins() as $plugin )
+			{
+				$pluginPath = \IPS\ROOT_PATH . '/plugins/' . $plugin->location;
+				$versionsFile = $pluginPath . '/dev/versions.json';
+
+				if ( !file_exists( $versionsFile ) )
+				{
+					continue;
+				}
+
+				$versions = json_decode( file_get_contents( $versionsFile ), TRUE );
+				if ( empty( $versions ) )
+				{
+					continue;
+				}
+
+				$keys = array_keys( $versions );
+				$devLongVersion = (int) max( $keys );
+				$devHumanVersion = $versions[ (string) $devLongVersion ];
+
+				if ( (int) $plugin->version_long !== $devLongVersion || $plugin->version_human !== $devHumanVersion )
+				{
+					\IPS\Db::i()->update( 'core_plugins', array(
+						'plugin_version_long'  => $devLongVersion,
+						'plugin_version_human' => $devHumanVersion,
+					), array( 'plugin_id=?', $plugin->id ) );
+
+					$fixed++;
+				}
+			}
+
+			/* Clear plugin cache so IPS picks up changes */
+			unset( \IPS\Data\Store::i()->plugins );
+
+			\IPS\Output::i()->redirect(
+				\IPS\Http\Url::internal( 'app=core&module=applications&controller=plugins&do=xbdtSyncPluginVersions' ),
+				\IPS\Member::loggedIn()->language()->addToStack( 'xbdt_sync_fixed', FALSE, array( 'sprintf' => array( $fixed ) ) )
+			);
 		}
 		catch ( \Error | \RuntimeException $e )
 		{

@@ -4,8 +4,8 @@
 
 | Key | Value |
 |---|---|
-| Version | 1.0.1 |
-| Long Version | 10001 |
+| Version | 1.1.0 |
+| Long Version | 10100 |
 
 ## Capabilities
 
@@ -27,3 +27,10 @@
 - ZIP bundle or individual .xml file download modes
 - Same progress indicator and error handling as applications
 - Plugin XML includes hooks, settings, tasks, widgets, HTML, CSS, JS, resources, lang, versions
+
+### Sync Plugin Versions
+
+- Detects version mismatches between dev/versions.json and the database
+- Comparison table showing DB version vs dev version for each plugin
+- One-click "Fix All" to update database records to match dev source
+- Clears plugin cache after fix so IPS picks up changes immediately
