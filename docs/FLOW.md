@@ -23,16 +23,25 @@ ACP > System > Site Features > Applications
 
 ```
 ACP > System > Site Features > Plugins
-  └── Sidebar: "Bulk Download Plugins" button
-      └── Dialog opens
-          ├── Download Mode: Individual / ZIP
-          └── Plugin Checkboxes (all pre-checked)
-              └── Submit
-                  └── MultipleRedirect (full page)
-                      ├── Per-plugin XML export with progress bar
-                      └── Completion → Plugin Download Results page
-                          ├── "Download All as ZIP" button
-                          └── Individual .xml links per plugin
+  ├── Sidebar: "Bulk Download Plugins" button
+  │   └── Dialog opens
+  │       ├── Download Mode: Individual / ZIP
+  │       └── Plugin Checkboxes (all pre-checked)
+  │           └── Submit
+  │               └── MultipleRedirect (full page)
+  │                   ├── Per-plugin XML export with progress bar
+  │                   └── Completion → Plugin Download Results page
+  │                       ├── "Download All as ZIP" button
+  │                       └── Individual .xml links per plugin
+  └── Sidebar: "Sync Plugin Versions" button
+      └── Comparison page (full page, no dialog)
+          ├── Table: Plugin | DB Version | Dev Version | Status
+          ├── Status icons: check (in sync), warning (mismatch), question (no versions.json)
+          └── If mismatches exist:
+              └── "Fix All Out-of-Sync" button
+                  → Updates DB to match dev/versions.json
+                  → Clears plugin cache
+                  → Redirects back to comparison page
 ```
 
 ## Applications Processing Sequence
@@ -52,6 +61,15 @@ ACP > System > Site Features > Plugins
 4. Each step: load plugin → build XML → save to temp file → return progress
 5. Final step: store errors + built info in session → return null
 6. Finished callback: redirect to plugin download results page
+
+## Sync Plugin Versions Sequence
+
+1. Click "Sync Plugin Versions" sidebar button (direct link, no dialog)
+2. `xbdtSyncPluginVersions()` iterates all plugins
+3. For each plugin: reads `dev/versions.json`, finds highest long version, compares with DB `plugin_version_long` and `plugin_version_human`
+4. Renders comparison table with status indicators
+5. If mismatches exist: "Fix All Out-of-Sync" button links to `xbdtSyncPluginVersionsFix()` with CSRF + confirm
+6. Fix updates `core_plugins` rows, clears plugin cache, redirects back to comparison page
 
 ## Error Handling
 

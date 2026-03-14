@@ -25,12 +25,14 @@ Two-hook plugin that extends the ACP Applications and Plugins controllers with b
 
 | Method | Purpose |
 |---|---|
-| `manage()` | Override — adds Bulk Download Plugins sidebar button |
+| `manage()` | Override — adds Bulk Download Plugins and Sync Plugin Versions sidebar buttons |
 | `xbdtBulkPlugins()` | Dialog form with download mode + plugin selection |
 | `xbdtPluginProcess()` | MultipleRedirect — builds XML for each plugin |
 | `xbdtPluginDownloadResults()` | Results page with ZIP and individual .xml download links |
 | `xbdtPluginDownloadXml()` | Sends single plugin .xml to browser |
 | `xbdtPluginDownloadZip()` | Bundles all selected plugins into one .zip |
+| `xbdtSyncPluginVersions()` | Comparison page showing DB vs dev/versions.json for each plugin |
+| `xbdtSyncPluginVersionsFix()` | Updates DB records to match dev/versions.json, clears plugin cache |
 | `xbdtBuildPluginXml()` | Builds plugin XML (mirrors core download without DB side-effects) |
 
 ### App Actions

@@ -67,3 +67,28 @@
 
 1. If an app/plugin has broken state, verify other items still process
 2. Verify error messages shown on completion
+
+### 9. Sync Plugin Versions — In Sync
+
+1. Navigate to ACP > System > Site Features > Plugins
+2. Verify sidebar shows "Sync Plugin Versions" button (direct link, no dialog)
+3. Click the button — full-page comparison table should appear
+4. If all plugins match: green success message "All plugin versions are in sync"
+5. Verify table shows Plugin, DB Version, Dev Version, Status columns
+6. Verify in-sync plugins show green check icon
+
+### 10. Sync Plugin Versions — Mismatch Detection
+
+1. Manually change a plugin's `dev/versions.json` to add a higher version
+2. Click "Sync Plugin Versions"
+3. Verify warning message appears about mismatches
+4. Verify mismatched plugins show red warning icon with "Out of Sync" status
+5. Verify "Fix All Out-of-Sync" button appears
+
+### 11. Sync Plugin Versions — Fix All
+
+1. With a mismatch detected, click "Fix All Out-of-Sync"
+2. Confirm the action
+3. Verify redirect back to comparison page with success message showing count of fixed plugins
+4. Verify all plugins now show "In Sync" status
+5. Verify DB values match dev/versions.json (check via ACP plugin list or direct DB query)

@@ -1,6 +1,6 @@
 # X Bulk Dev Tools
 
-Developer productivity plugin for IPS4 ACP that adds bulk developer operations to both the Applications and Plugins pages. Replaces the default "Build All" button on the Applications page with a selection dialog for bulk Compile JS, Build, or Rebuild & Download. Adds a "Bulk Download Plugins" button to the Plugins page for exporting multiple plugins at once. Supports ZIP bundle or individual file downloads for both.
+Developer productivity plugin for IPS4 ACP that adds bulk developer operations to both the Applications and Plugins pages. Replaces the default "Build All" button on the Applications page with a selection dialog for bulk Compile JS, Build, or Rebuild & Download. Adds a "Bulk Download Plugins" button to the Plugins page for exporting multiple plugins at once. Also adds a "Sync Plugin Versions" feature that compares each plugin's dev/versions.json against the database and can fix mismatches with one click. Supports ZIP bundle or individual file downloads for both apps and plugins.
 
 ## Read Order
 
@@ -15,7 +15,7 @@ Developer productivity plugin for IPS4 ACP that adds bulk developer operations t
 | File | Purpose |
 |---|---|
 | `plugin-source/hooks/applicationsController.php` | Hook on Applications controller — bulk build/compile/download |
-| `plugin-source/hooks/pluginsController.php` | Hook on Plugins controller — bulk plugin download |
+| `plugin-source/hooks/pluginsController.php` | Hook on Plugins controller — bulk plugin download + version sync |
 | `plugin-source/dev/lang.php` | Language strings |
 | `plugin-source/dev/hooks.json` | Hook registrations |
 
