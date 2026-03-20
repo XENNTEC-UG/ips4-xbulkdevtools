@@ -6,6 +6,8 @@
 |---|---|
 | Version | 1.1.0 |
 | Long Version | 10100 |
+| Type | Plugin |
+| Compatibility | IPS4 4.7+ / PHP 8.1+ (IN_DEV mode required) |
 
 ## Capabilities
 

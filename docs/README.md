@@ -16,8 +16,9 @@ Developer productivity plugin for IPS4 ACP that adds bulk developer operations t
 |---|---|
 | `plugin-source/hooks/applicationsController.php` | Hook on Applications controller — bulk build/compile/download |
 | `plugin-source/hooks/pluginsController.php` | Hook on Plugins controller — bulk plugin download + version sync |
-| `plugin-source/dev/lang.php` | Language strings |
+| `plugin-source/dev/lang.php` | Language strings (prefix: `xbdt_`) |
 | `plugin-source/dev/hooks.json` | Hook registrations |
+| `plugin-source/dev/versions.json` | Version registry |
 
 ## Source of Truth
 
