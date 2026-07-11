@@ -1,6 +1,6 @@
 # X Bulk Dev Tools
 
-Developer productivity plugin for IPS4 ACP that adds bulk developer operations to both the Applications and Plugins pages. Replaces the default "Build All" button on the Applications page with a selection dialog for bulk Compile JS, Build, or Rebuild & Download. Adds a "Bulk Download Plugins" button to the Plugins page for exporting multiple plugins at once. Also adds a "Sync Plugin Versions" feature that compares each plugin's dev/versions.json against the database and can fix mismatches with one click. Supports ZIP bundle or individual file downloads for both apps and plugins.
+IPS4 plugin for development installations that adds bulk operations to the ACP Applications and Plugins pages. On the Applications page, it replaces the default "Build All" action with a dialog for compiling JavaScript, building applications, or rebuilding applications before download. On the Plugins page, it adds bulk XML export and a version comparison that can update database version fields from each plugin's `dev/versions.json`. Application TAR files and plugin XML files can be downloaded individually or together in ZIP archives. The added actions are available only when `IN_DEV` is enabled.
 
 ## Read Order
 
@@ -27,7 +27,7 @@ Developer productivity plugin for IPS4 ACP that adds bulk developer operations t
 
 ## Global Context
 
-- [README.md](../../../README.md): stack setup
-- [IPS4_DEV_GUIDE.md](../../../IPS4_DEV_GUIDE.md): coding standards
-- [AI_TOOLS.md](../../../AI_TOOLS.md): tool reference
-- [CLAUDE.md](../../../CLAUDE.md): project routing
+- [README.md](../../../../README.md): stack setup
+- [IPS4_DEV_GUIDE.md](../../../../IPS4_DEV_GUIDE.md): coding standards
+- [AI_TOOLS.md](../../../../AI_TOOLS.md): tool reference
+- [CLAUDE.md](../../../../CLAUDE.md): project routing

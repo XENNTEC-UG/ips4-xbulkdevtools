@@ -1,8 +1,8 @@
-# Architecture — X Bulk Dev Tools
+# Architecture: X Bulk Dev Tools
 
 ## Overview
 
-Two-hook plugin that extends the ACP Applications and Plugins controllers with bulk developer operations.
+This plugin registers two controller hooks for bulk developer operations in the ACP. It has no settings file, settings metadata, task metadata, task classes, widgets, templates, or database tables. Runtime state for batch processing and download results is stored in `$_SESSION`, while generated archives and plugin XML use `\IPS\TEMP_DIRECTORY`.
 
 ## Hooks
 
@@ -12,9 +12,9 @@ Two-hook plugin that extends the ACP Applications and Plugins controllers with b
 
 | Method | Purpose |
 |---|---|
-| `manage()` | Override — replaces Build All sidebar button with Bulk Dev Tools |
+| `manage()` | Calls the parent method, then replaces the `build_all` sidebar action when `IN_DEV` is enabled |
 | `xbdtBulkTools()` | Dialog form with action + download mode + app selection |
-| `xbdtProcess()` | MultipleRedirect processor — iterates selected apps |
+| `xbdtProcess()` | `MultipleRedirect` processor that iterates selected applications |
 | `xbdtDownloadResults()` | Results page with ZIP and individual .tar download links |
 | `xbdtDownloadTar()` | Sends single app .tar to browser |
 | `xbdtDownloadZip()` | Bundles all selected apps into one .zip |
@@ -25,9 +25,9 @@ Two-hook plugin that extends the ACP Applications and Plugins controllers with b
 
 | Method | Purpose |
 |---|---|
-| `manage()` | Override — adds Bulk Download Plugins and Sync Plugin Versions sidebar buttons |
+| `manage()` | Calls the parent method, then adds Bulk Download Plugins and Sync Plugin Versions sidebar actions when `IN_DEV` is enabled |
 | `xbdtBulkPlugins()` | Dialog form with download mode + plugin selection |
-| `xbdtPluginProcess()` | MultipleRedirect — builds XML for each plugin |
+| `xbdtPluginProcess()` | `MultipleRedirect` processor that builds XML for each plugin |
 | `xbdtPluginDownloadResults()` | Results page with ZIP and individual .xml download links |
 | `xbdtPluginDownloadXml()` | Sends single plugin .xml to browser |
 | `xbdtPluginDownloadZip()` | Bundles all selected plugins into one .zip |
@@ -39,8 +39,8 @@ Two-hook plugin that extends the ACP Applications and Plugins controllers with b
 
 | Action | What It Does Per App |
 |---|---|
-| `compilejs` | `Javascript::createXml()` + `Javascript::compile()` — JS only |
-| `build` | `$application->build()` — full XML/lang/theme/JS/hooks rebuild |
+| `compilejs` | Creates `data/javascript.xml` when the data directory is writable, compiles the selected application, and also compiles `global` for the `core` application |
+| `build` | Calls `$application->build()` |
 | `download` | `$application->build()` then offers .tar/.zip downloads |
 
 ### Plugin Actions
@@ -62,7 +62,7 @@ Two-hook plugin that extends the ACP Applications and Plugins controllers with b
 3. Each step processes one app/plugin, increments index, reports progress
 4. Completion: Build/CompileJS redirect to apps page; Download redirects to results page
 5. Results page reads session for processed items, renders download links
-6. ZIP/Tar/XML endpoints create archives and send output
+6. TAR endpoints build application archives on request. Plugin XML is read from its temporary file or rebuilt if that file no longer exists. ZIP endpoints assemble the selected outputs and send them to the browser.
 
 ## Hook Class IDs
 
@@ -92,9 +92,13 @@ Two-hook plugin that extends the ACP Applications and Plugins controllers with b
 | `2XBDT/P8` | `xbdtSyncPluginVersions()` | `IN_DEV` is not enabled |
 | `2XBDT/P9` | `xbdtSyncPluginVersionsFix()` | `IN_DEV` is not enabled |
 
+## Settings and Tasks
+
+The plugin defines no settings or scheduled tasks. `xbdtBuildPluginXml()` can include settings and tasks from other selected plugins when their source files exist, but those branches are part of the export implementation rather than settings or tasks owned by X Bulk Dev Tools.
+
 ## Plugin XML Builder (`xbdtBuildPluginXml`)
 
-The `xbdtBuildPluginXml()` helper method mirrors the IPS4 core plugin download logic without triggering DB side-effects. It builds a complete installable XML by reading from the plugin's dev directory. Sections included:
+The `xbdtBuildPluginXml()` helper creates plugin XML from plugin metadata, database hook records, hook files, and available files in the selected plugin's source directory. Sections included:
 
 | Section | Source |
 |---|---|
@@ -112,14 +116,14 @@ The built XML includes plugin metadata attributes: `name`, `version_long`, `vers
 
 ## Code Patterns
 
-- All methods use `try { ... } catch ( \Error | \RuntimeException $e )` with parent fallback
-- Every action method checks `\IPS\IN_DEV` and returns error `2XBDT/*` if not enabled
-- CSRF check on processing and download endpoints via `\IPS\Session::i()->csrfCheck()`
+- Hook action methods use `try { ... } catch ( \Error | \RuntimeException $e )` with parent fallback. Per-item batch work catches `\Exception` so later items can continue.
+- ACP actions check `\IPS\IN_DEV` before performing plugin behavior.
+- Processing, individual download, ZIP download, and version-fix endpoints call `\IPS\Session::i()->csrfCheck()`.
 - Form validators throw `\DomainException`
 - Language prefix: `xbdt_`
 - Temp files use `\IPS\TEMP_DIRECTORY` and are cleaned up after download
 - Errors are collected (not thrown) during MultipleRedirect so processing continues for remaining items
 
-## No Database
+## Persistence
 
-Plugin has no tables. Session storage is used for inter-request state during MultipleRedirect processing.
+The plugin has no tables. Session storage carries selections, errors, and generated-item metadata between requests. The version-fix action directly updates `plugin_version_long` and `plugin_version_human` in `core_plugins`, then unsets the IPS plugin cache entry.
