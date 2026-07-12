@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<plugin name="X Bulk Dev Tools" version_long="10100" version_human="1.1.0" author="XENNTEC UG" website="https://xenntec.net" update_check="https://xenntec-ug.github.io/ips4-updates/xbulkdevtools.json"><hooks><hook type="C" class="\IPS\core\modules\admin\applications\applications" filename="applicationsController"><![CDATA[//<?php
+<plugin name="X Bulk Dev Tools" version_long="10101" version_human="1.1.1" author="XENNTEC UG" website="https://xenntec.net" update_check="https://xenntec-ug.github.io/ips4-updates/xbulkdevtools.json"><hooks><hook type="C" class="\IPS\core\modules\admin\applications\applications" filename="applicationsController"><![CDATA[//<?php
 /**
  * @brief		Hook on \IPS\core\modules\admin\applications\_applications
  * @author		XENNTEC UG
@@ -202,6 +202,10 @@ class hook474 extends _HOOK_CLASS_
 				}
 	
 				$action = \IPS\Request::i()->action;
+				if ( !\in_array( $action, array( 'compilejs', 'build', 'download' ), TRUE ) )
+				{
+					\IPS\Output::i()->error( 'xbdt_invalid_action', '2XBDT/8', 400, '' );
+				}
 	
 				\IPS\Output::i()->output = new \IPS\Helpers\MultipleRedirect(
 					\IPS\Http\Url::internal( 'app=core&module=applications&controller=applications&do=xbdtProcess&action=' . $action )->csrf(),
@@ -216,10 +220,11 @@ class hook474 extends _HOOK_CLASS_
 								return NULL;
 							}
 							$data = array(
-								'index'  => 0,
-								'apps'   => $apps,
-								'total'  => \count( $apps ),
-								'errors' => array(),
+								'index'     => 0,
+								'apps'      => $apps,
+								'total'     => \count( $apps ),
+								'errors'    => array(),
+								'processed' => array(),
 							);
 						}
 	
@@ -228,7 +233,7 @@ class hook474 extends _HOOK_CLASS_
 						{
 							/* Store errors in session for the results page */
 							$_SESSION['xbdt_errors'] = $data['errors'];
-							$_SESSION['xbdt_processed_apps'] = $data['apps'];
+							$_SESSION['xbdt_processed_apps'] = $data['processed'];
 							return NULL;
 						}
 	
@@ -260,8 +265,10 @@ class hook474 extends _HOOK_CLASS_
 									}
 									break;
 							}
+	
+							$data['processed'][] = $appKey;
 						}
-						catch ( \Exception $e )
+						catch ( \Throwable $e )
 						{
 							$data['errors'][] = $appKey . ': ' . $e->getMessage();
 						}
@@ -351,7 +358,7 @@ class hook474 extends _HOOK_CLASS_
 				$errors = isset( $_SESSION['xbdt_errors'] ) ? $_SESSION['xbdt_errors'] : array();
 				$mode   = isset( $_SESSION['xbdt_download_mode'] ) ? $_SESSION['xbdt_download_mode'] : 'zip';
 	
-				if ( empty( $apps ) )
+				if ( empty( $apps ) AND empty( $errors ) )
 				{
 					\IPS\Output::i()->redirect(
 						\IPS\Http\Url::internal( 'app=core&module=applications&controller=applications' ),
@@ -374,12 +381,15 @@ class hook474 extends _HOOK_CLASS_
 					$html .= '</div><br>';
 				}
 	
-				/* ZIP download button */
-				$zipUrl = \IPS\Http\Url::internal( 'app=core&module=applications&controller=applications&do=xbdtDownloadZip' )->csrf();
-				$html .= '<p>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_download_results_desc' ) . '</p>';
-				$html .= '<div class="ipsButtonBar">';
-				$html .= '<a href="' . $zipUrl . '" class="ipsButton ipsButton_primary ipsButton_medium"><i class="fa fa-file-archive-o"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_download_all_zip' ) . '</a>';
-				$html .= '</div><br>';
+				if ( !empty( $apps ) )
+				{
+					/* ZIP download button */
+					$zipUrl = \IPS\Http\Url::internal( 'app=core&module=applications&controller=applications&do=xbdtDownloadZip' )->csrf();
+					$html .= '<p>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_download_results_desc' ) . '</p>';
+					$html .= '<div class="ipsButtonBar">';
+					$html .= '<a href="' . $zipUrl . '" class="ipsButton ipsButton_primary ipsButton_medium"><i class="fa fa-file-archive-o"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_download_all_zip' ) . '</a>';
+					$html .= '</div><br>';
+				}
 	
 				/* Individual download table */
 				$html .= '<table class="ipsTable ipsTable_zebra">';
@@ -409,7 +419,7 @@ class hook474 extends _HOOK_CLASS_
 				$html .= '</tbody></table>';
 	
 				/* If user chose individual mode, auto-start sequential downloads via JS */
-				if ( $mode === 'individual' )
+				if ( $mode === 'individual' AND !empty( $apps ) )
 				{
 					$html .= '<script type="text/javascript">';
 					$html .= '(function() {';
@@ -494,7 +504,8 @@ class hook474 extends _HOOK_CLASS_
 				$application = \IPS\Application::load( $appKey );
 				$appName     = \IPS\Member::loggedIn()->language()->words[ '__app_' . $appKey ] ?? $appKey;
 	
-				$pharPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/' . $appKey . '.tar';
+				$tempToken = \bin2hex( \random_bytes( 8 ) );
+				$pharPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/' . $appKey . '_' . $tempToken . '.tar';
 				$download = new \PharData( $pharPath, 0, $appKey . '.tar', \Phar::TAR );
 				$download->buildFromIterator( new \IPS\Application\BuilderIterator( $application ) );
 	
@@ -561,7 +572,8 @@ class hook474 extends _HOOK_CLASS_
 					\IPS\Output::i()->error( 'xbdt_no_apps_selected', '2XBDT/6', 400, '' );
 				}
 	
-				$zipPath  = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_bulk_download.zip';
+				$tempToken = \bin2hex( \random_bytes( 8 ) );
+				$zipPath  = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_bulk_download_' . $tempToken . '.zip';
 				$tarPaths = array();
 	
 				$zip = new \ZipArchive();
@@ -577,7 +589,7 @@ class hook474 extends _HOOK_CLASS_
 						$application = \IPS\Application::load( $appKey );
 						$appName     = \IPS\Member::loggedIn()->language()->words[ '__app_' . $appKey ] ?? $appKey;
 	
-						$pharPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/' . $appKey . '.tar';
+						$pharPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/' . $appKey . '_' . $tempToken . '.tar';
 						$phar     = new \PharData( $pharPath, 0, $appKey . '.tar', \Phar::TAR );
 						$phar->buildFromIterator( new \IPS\Application\BuilderIterator( $application ) );
 	
@@ -865,7 +877,8 @@ class hook475 extends _HOOK_CLASS_
 	
 							/* Build the XML in a temp file so it's ready for download */
 							$xml = $this->xbdtBuildPluginXml( $plugin );
-							$tempPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugin_' . $pluginId . '.xml';
+							$tempToken = \bin2hex( \random_bytes( 8 ) );
+							$tempPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugin_' . $pluginId . '_' . $tempToken . '.xml';
 							\file_put_contents( $tempPath, $xml->asXML() );
 	
 							$data['built'][] = array(
@@ -1078,8 +1091,17 @@ class hook475 extends _HOOK_CLASS_
 				$pluginId = (int) \IPS\Request::i()->pluginId;
 	
 				/* Check if we have a pre-built temp file */
-				$tempPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugin_' . $pluginId . '.xml';
-				if ( file_exists( $tempPath ) )
+				$tempPath = NULL;
+				$built = isset( $_SESSION['xbdt_plugin_built'] ) ? $_SESSION['xbdt_plugin_built'] : array();
+				foreach ( $built as $info )
+				{
+					if ( (int) $info['id'] === $pluginId )
+					{
+						$tempPath = $info['tempFile'];
+						break;
+					}
+				}
+				if ( $tempPath !== NULL AND file_exists( $tempPath ) )
 				{
 					$output = \file_get_contents( $tempPath );
 					@unlink( $tempPath );
@@ -1153,7 +1175,8 @@ class hook475 extends _HOOK_CLASS_
 					\IPS\Output::i()->error( 'xbdt_no_plugins_selected', '2XBDT/P6', 400, '' );
 				}
 	
-				$zipPath  = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugins_bulk_download.zip';
+				$tempToken = \bin2hex( \random_bytes( 8 ) );
+				$zipPath  = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugins_bulk_download_' . $tempToken . '.zip';
 				$tempFiles = array();
 	
 				$zip = new \ZipArchive();
@@ -1179,7 +1202,7 @@ class hook475 extends _HOOK_CLASS_
 						{
 							$plugin = \IPS\Plugin::load( $info['id'] );
 							$xml    = $this->xbdtBuildPluginXml( $plugin );
-							$newTempPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugin_' . $info['id'] . '_zip.xml';
+							$newTempPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugin_' . $info['id'] . '_' . $tempToken . '_zip.xml';
 							\file_put_contents( $newTempPath, $xml->asXML() );
 							$zip->addFile( $newTempPath, $xmlFilename );
 							$tempFiles[] = $newTempPath;
@@ -1659,4 +1682,4 @@ class hook475 extends _HOOK_CLASS_
 		}
 	}
 }
-]]></hook></hooks><htmlFiles/><cssFiles/><jsFiles/><resourcesFiles/><lang><word key="xbdt_bulk_dev_tools" js="0">Bulk Dev Tools</word><word key="xbdt_action" js="0">Action</word><word key="xbdt_action_build" js="0">Build Application (XML, lang, themes, hooks, etc.)</word><word key="xbdt_action_compilejs" js="0">Compile JavaScript only</word><word key="xbdt_action_download" js="0"><![CDATA[Rebuild & Download (.tar)]]></word><word key="xbdt_download_mode" js="0">Download Mode</word><word key="xbdt_download_zip" js="0">All in one ZIP bundle</word><word key="xbdt_download_individual" js="0">Individual .tar files</word><word key="xbdt_apps" js="0">Applications</word><word key="xbdt_apps_desc" js="0">Custom apps are pre-selected. Core/protected apps are unchecked by default.</word><word key="xbdt_process_complete" js="0">All selected applications processed successfully.</word><word key="xbdt_building" js="0">Building: %s (%s/%s)</word><word key="xbdt_compiling_js" js="0">Compiling JS: %s (%s/%s)</word><word key="xbdt_download_results" js="0">Download Ready</word><word key="xbdt_download_results_desc" js="0">All selected applications have been rebuilt. Choose your download method:</word><word key="xbdt_download_all_zip" js="0">Download All as ZIP</word><word key="xbdt_download_tar" js="0">Download .tar</word><word key="xbdt_errors_occurred" js="0">Some items had errors during processing:</word><word key="xbdt_no_apps_selected" js="0">No applications were selected.</word><word key="xbdt_bulk_download_plugins" js="0">Bulk Download Plugins</word><word key="xbdt_plugin_download_mode" js="0">Download Mode</word><word key="xbdt_plugin_download_zip" js="0">All in one ZIP bundle</word><word key="xbdt_plugin_download_individual" js="0">Individual .xml files</word><word key="xbdt_plugins" js="0">Plugins</word><word key="xbdt_no_plugins_selected" js="0">No plugins were selected.</word><word key="xbdt_exporting_plugin" js="0">Exporting: %s (%s/%s)</word><word key="xbdt_plugin_download_results" js="0">Plugin Downloads Ready</word><word key="xbdt_plugin_download_results_desc" js="0">All selected plugins have been exported. Choose your download method:</word><word key="xbdt_plugin_download_all_zip" js="0">Download All as ZIP</word><word key="xbdt_plugin_download_xml" js="0">Download .xml</word><word key="xbdt_sync_plugin_versions" js="0">Sync Plugin Versions</word><word key="xbdt_sync_mismatch_warning" js="0">Some plugins have versions in dev/versions.json that do not match the database. Click "Fix All" to update the database to match.</word><word key="xbdt_sync_all_ok" js="0">All plugin versions are in sync between dev/versions.json and the database.</word><word key="xbdt_sync_fix_all" js="0">Fix All Out-of-Sync</word><word key="xbdt_sync_col_plugin" js="0">Plugin</word><word key="xbdt_sync_col_db_version" js="0">DB Version</word><word key="xbdt_sync_col_dev_version" js="0">Dev Version</word><word key="xbdt_sync_col_status" js="0">Status</word><word key="xbdt_sync_no_versions_file" js="0">No versions.json</word><word key="xbdt_sync_status_unknown" js="0">Unknown</word><word key="xbdt_sync_status_ok" js="0">In Sync</word><word key="xbdt_sync_status_mismatch" js="0">Out of Sync</word><word key="xbdt_sync_fixed" js="0">Updated %s plugin(s) to match dev/versions.json.</word></lang><versions><version long="10000" human="1.0.0"/><version long="10001" human="1.0.1"/><version long="10100" human="1.1.0"/></versions></plugin>
+]]></hook></hooks><htmlFiles/><cssFiles/><jsFiles/><resourcesFiles/><lang><word key="xbdt_bulk_dev_tools" js="0">Bulk Dev Tools</word><word key="xbdt_action" js="0">Action</word><word key="xbdt_action_build" js="0">Build Application (XML, lang, themes, hooks, etc.)</word><word key="xbdt_action_compilejs" js="0">Compile JavaScript only</word><word key="xbdt_action_download" js="0"><![CDATA[Rebuild & Download (.tar)]]></word><word key="xbdt_download_mode" js="0">Download Mode</word><word key="xbdt_download_zip" js="0">All in one ZIP bundle</word><word key="xbdt_download_individual" js="0">Individual .tar files</word><word key="xbdt_apps" js="0">Applications</word><word key="xbdt_apps_desc" js="0">Custom apps are pre-selected. Core/protected apps are unchecked by default.</word><word key="xbdt_process_complete" js="0">All selected applications processed successfully.</word><word key="xbdt_building" js="0">Building: %s (%s/%s)</word><word key="xbdt_compiling_js" js="0">Compiling JS: %s (%s/%s)</word><word key="xbdt_download_results" js="0">Download Ready</word><word key="xbdt_download_results_desc" js="0">Download the applications that finished successfully.</word><word key="xbdt_download_all_zip" js="0">Download All as ZIP</word><word key="xbdt_download_tar" js="0">Download .tar</word><word key="xbdt_errors_occurred" js="0">Some items had errors during processing:</word><word key="xbdt_no_apps_selected" js="0">No applications were selected.</word><word key="xbdt_invalid_action" js="0">The requested bulk action is not valid.</word><word key="xbdt_bulk_download_plugins" js="0">Bulk Download Plugins</word><word key="xbdt_plugin_download_mode" js="0">Download Mode</word><word key="xbdt_plugin_download_zip" js="0">All in one ZIP bundle</word><word key="xbdt_plugin_download_individual" js="0">Individual .xml files</word><word key="xbdt_plugins" js="0">Plugins</word><word key="xbdt_no_plugins_selected" js="0">No plugins were selected.</word><word key="xbdt_exporting_plugin" js="0">Exporting: %s (%s/%s)</word><word key="xbdt_plugin_download_results" js="0">Plugin Downloads Ready</word><word key="xbdt_plugin_download_results_desc" js="0">All selected plugins have been exported. Choose your download method:</word><word key="xbdt_plugin_download_all_zip" js="0">Download All as ZIP</word><word key="xbdt_plugin_download_xml" js="0">Download .xml</word><word key="xbdt_sync_plugin_versions" js="0">Sync Plugin Versions</word><word key="xbdt_sync_mismatch_warning" js="0">Some plugins have versions in dev/versions.json that do not match the database. Click "Fix All" to update the database to match.</word><word key="xbdt_sync_all_ok" js="0">All plugin versions are in sync between dev/versions.json and the database.</word><word key="xbdt_sync_fix_all" js="0">Fix All Out-of-Sync</word><word key="xbdt_sync_col_plugin" js="0">Plugin</word><word key="xbdt_sync_col_db_version" js="0">DB Version</word><word key="xbdt_sync_col_dev_version" js="0">Dev Version</word><word key="xbdt_sync_col_status" js="0">Status</word><word key="xbdt_sync_no_versions_file" js="0">No versions.json</word><word key="xbdt_sync_status_unknown" js="0">Unknown</word><word key="xbdt_sync_status_ok" js="0">In Sync</word><word key="xbdt_sync_status_mismatch" js="0">Out of Sync</word><word key="xbdt_sync_fixed" js="0">Updated %s plugin(s) to match dev/versions.json.</word></lang><versions><version long="10000" human="1.0.0"/><version long="10001" human="1.0.1"/><version long="10100" human="1.1.0"/><version long="10101" human="1.1.1"/></versions></plugin>
