@@ -161,6 +161,10 @@ class hook474 extends _HOOK_CLASS_
 			}
 
 			$action = \IPS\Request::i()->action;
+			if ( !\in_array( $action, array( 'compilejs', 'build', 'download' ), TRUE ) )
+			{
+				\IPS\Output::i()->error( 'xbdt_invalid_action', '2XBDT/8', 400, '' );
+			}
 
 			\IPS\Output::i()->output = new \IPS\Helpers\MultipleRedirect(
 				\IPS\Http\Url::internal( 'app=core&module=applications&controller=applications&do=xbdtProcess&action=' . $action )->csrf(),
@@ -175,10 +179,11 @@ class hook474 extends _HOOK_CLASS_
 							return NULL;
 						}
 						$data = array(
-							'index'  => 0,
-							'apps'   => $apps,
-							'total'  => \count( $apps ),
-							'errors' => array(),
+							'index'     => 0,
+							'apps'      => $apps,
+							'total'     => \count( $apps ),
+							'errors'    => array(),
+							'processed' => array(),
 						);
 					}
 
@@ -187,7 +192,7 @@ class hook474 extends _HOOK_CLASS_
 					{
 						/* Store errors in session for the results page */
 						$_SESSION['xbdt_errors'] = $data['errors'];
-						$_SESSION['xbdt_processed_apps'] = $data['apps'];
+						$_SESSION['xbdt_processed_apps'] = $data['processed'];
 						return NULL;
 					}
 
@@ -219,8 +224,10 @@ class hook474 extends _HOOK_CLASS_
 								}
 								break;
 						}
+
+						$data['processed'][] = $appKey;
 					}
-					catch ( \Exception $e )
+					catch ( \Throwable $e )
 					{
 						$data['errors'][] = $appKey . ': ' . $e->getMessage();
 					}
@@ -291,7 +298,7 @@ class hook474 extends _HOOK_CLASS_
 			$errors = isset( $_SESSION['xbdt_errors'] ) ? $_SESSION['xbdt_errors'] : array();
 			$mode   = isset( $_SESSION['xbdt_download_mode'] ) ? $_SESSION['xbdt_download_mode'] : 'zip';
 
-			if ( empty( $apps ) )
+			if ( empty( $apps ) AND empty( $errors ) )
 			{
 				\IPS\Output::i()->redirect(
 					\IPS\Http\Url::internal( 'app=core&module=applications&controller=applications' ),
@@ -314,12 +321,15 @@ class hook474 extends _HOOK_CLASS_
 				$html .= '</div><br>';
 			}
 
-			/* ZIP download button */
-			$zipUrl = \IPS\Http\Url::internal( 'app=core&module=applications&controller=applications&do=xbdtDownloadZip' )->csrf();
-			$html .= '<p>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_download_results_desc' ) . '</p>';
-			$html .= '<div class="ipsButtonBar">';
-			$html .= '<a href="' . $zipUrl . '" class="ipsButton ipsButton_primary ipsButton_medium"><i class="fa fa-file-archive-o"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_download_all_zip' ) . '</a>';
-			$html .= '</div><br>';
+			if ( !empty( $apps ) )
+			{
+				/* ZIP download button */
+				$zipUrl = \IPS\Http\Url::internal( 'app=core&module=applications&controller=applications&do=xbdtDownloadZip' )->csrf();
+				$html .= '<p>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_download_results_desc' ) . '</p>';
+				$html .= '<div class="ipsButtonBar">';
+				$html .= '<a href="' . $zipUrl . '" class="ipsButton ipsButton_primary ipsButton_medium"><i class="fa fa-file-archive-o"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_download_all_zip' ) . '</a>';
+				$html .= '</div><br>';
+			}
 
 			/* Individual download table */
 			$html .= '<table class="ipsTable ipsTable_zebra">';
@@ -349,7 +359,7 @@ class hook474 extends _HOOK_CLASS_
 			$html .= '</tbody></table>';
 
 			/* If user chose individual mode, auto-start sequential downloads via JS */
-			if ( $mode === 'individual' )
+			if ( $mode === 'individual' AND !empty( $apps ) )
 			{
 				$html .= '<script type="text/javascript">';
 				$html .= '(function() {';
@@ -415,7 +425,8 @@ class hook474 extends _HOOK_CLASS_
 			$application = \IPS\Application::load( $appKey );
 			$appName     = \IPS\Member::loggedIn()->language()->words[ '__app_' . $appKey ] ?? $appKey;
 
-			$pharPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/' . $appKey . '.tar';
+			$tempToken = \bin2hex( \random_bytes( 8 ) );
+			$pharPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/' . $appKey . '_' . $tempToken . '.tar';
 			$download = new \PharData( $pharPath, 0, $appKey . '.tar', \Phar::TAR );
 			$download->buildFromIterator( new \IPS\Application\BuilderIterator( $application ) );
 
@@ -463,7 +474,8 @@ class hook474 extends _HOOK_CLASS_
 				\IPS\Output::i()->error( 'xbdt_no_apps_selected', '2XBDT/6', 400, '' );
 			}
 
-			$zipPath  = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_bulk_download.zip';
+			$tempToken = \bin2hex( \random_bytes( 8 ) );
+			$zipPath  = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_bulk_download_' . $tempToken . '.zip';
 			$tarPaths = array();
 
 			$zip = new \ZipArchive();
@@ -479,7 +491,7 @@ class hook474 extends _HOOK_CLASS_
 					$application = \IPS\Application::load( $appKey );
 					$appName     = \IPS\Member::loggedIn()->language()->words[ '__app_' . $appKey ] ?? $appKey;
 
-					$pharPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/' . $appKey . '.tar';
+					$pharPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/' . $appKey . '_' . $tempToken . '.tar';
 					$phar     = new \PharData( $pharPath, 0, $appKey . '.tar', \Phar::TAR );
 					$phar->buildFromIterator( new \IPS\Application\BuilderIterator( $application ) );
 

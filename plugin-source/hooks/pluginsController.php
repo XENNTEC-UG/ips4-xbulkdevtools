@@ -179,7 +179,8 @@ class hook475 extends _HOOK_CLASS_
 
 						/* Build the XML in a temp file so it's ready for download */
 						$xml = $this->xbdtBuildPluginXml( $plugin );
-						$tempPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugin_' . $pluginId . '.xml';
+						$tempToken = \bin2hex( \random_bytes( 8 ) );
+						$tempPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugin_' . $pluginId . '_' . $tempToken . '.xml';
 						\file_put_contents( $tempPath, $xml->asXML() );
 
 						$data['built'][] = array(
@@ -354,8 +355,17 @@ class hook475 extends _HOOK_CLASS_
 			$pluginId = (int) \IPS\Request::i()->pluginId;
 
 			/* Check if we have a pre-built temp file */
-			$tempPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugin_' . $pluginId . '.xml';
-			if ( file_exists( $tempPath ) )
+			$tempPath = NULL;
+			$built = isset( $_SESSION['xbdt_plugin_built'] ) ? $_SESSION['xbdt_plugin_built'] : array();
+			foreach ( $built as $info )
+			{
+				if ( (int) $info['id'] === $pluginId )
+				{
+					$tempPath = $info['tempFile'];
+					break;
+				}
+			}
+			if ( $tempPath !== NULL AND file_exists( $tempPath ) )
 			{
 				$output = \file_get_contents( $tempPath );
 				@unlink( $tempPath );
@@ -410,7 +420,8 @@ class hook475 extends _HOOK_CLASS_
 				\IPS\Output::i()->error( 'xbdt_no_plugins_selected', '2XBDT/P6', 400, '' );
 			}
 
-			$zipPath  = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugins_bulk_download.zip';
+			$tempToken = \bin2hex( \random_bytes( 8 ) );
+			$zipPath  = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugins_bulk_download_' . $tempToken . '.zip';
 			$tempFiles = array();
 
 			$zip = new \ZipArchive();
@@ -436,7 +447,7 @@ class hook475 extends _HOOK_CLASS_
 					{
 						$plugin = \IPS\Plugin::load( $info['id'] );
 						$xml    = $this->xbdtBuildPluginXml( $plugin );
-						$newTempPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugin_' . $info['id'] . '_zip.xml';
+						$newTempPath = str_replace( '\\', '/', rtrim( \IPS\TEMP_DIRECTORY, '/' ) ) . '/xbdt_plugin_' . $info['id'] . '_' . $tempToken . '_zip.xml';
 						\file_put_contents( $newTempPath, $xml->asXML() );
 						$zip->addFile( $newTempPath, $xmlFilename );
 						$tempFiles[] = $newTempPath;
