@@ -6,7 +6,7 @@
 
 | Key | Value |
 |---|---|
-| Version | 1.1.1 |
+| Version | 1.1.2 |
 | Long Version | 10101 |
 | Type | Plugin |
 
