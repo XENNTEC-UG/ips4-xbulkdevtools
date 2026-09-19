@@ -30,4 +30,4 @@ IPS4 plugin for development installations that adds bulk operations to the ACP A
 - [README.md](../../../../README.md): stack setup
 - [IPS4_DEV_GUIDE.md](../../../../IPS4_DEV_GUIDE.md): coding standards
 - [AI_TOOLS.md](../../../../AI_TOOLS.md): tool reference
-- [CLAUDE.md](../../../../CLAUDE.md): project routing
+- [AGENTS.md](../../../../AGENTS.md): project routing
