@@ -6,8 +6,8 @@
 
 | Key | Value |
 |---|---|
-| Version | 1.1.2 |
-| Long Version | 10102 |
+| Version | 1.1.3 |
+| Long Version | 10103 |
 | Type | Plugin |
 
 ## Capabilities
