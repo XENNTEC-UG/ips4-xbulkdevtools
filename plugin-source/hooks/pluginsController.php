@@ -242,7 +242,7 @@ class hook475 extends _HOOK_CLASS_
 			$errors = isset( $_SESSION['xbdt_plugin_errors'] ) ? $_SESSION['xbdt_plugin_errors'] : array();
 			$mode   = isset( $_SESSION['xbdt_plugin_download_mode'] ) ? $_SESSION['xbdt_plugin_download_mode'] : 'individual';
 
-			if ( empty( $built ) )
+			if ( empty( $built ) AND empty( $errors ) )
 			{
 				\IPS\Output::i()->redirect(
 					\IPS\Http\Url::internal( 'app=core&module=applications&controller=plugins' ),
