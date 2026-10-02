@@ -264,30 +264,33 @@ class hook475 extends _HOOK_CLASS_
 				$html .= '</div><br>';
 			}
 
-			/* ZIP download button */
-			$zipUrl = \IPS\Http\Url::internal( 'app=core&module=applications&controller=plugins&do=xbdtPluginDownloadZip' )->csrf();
-			$html .= '<p>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_plugin_download_results_desc' ) . '</p>';
-			$html .= '<div class="ipsButtonBar">';
-			$html .= '<a href="' . $zipUrl . '" class="ipsButton ipsButton_primary ipsButton_medium"><i class="fa fa-file-archive-o"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_plugin_download_all_zip' ) . '</a>';
-			$html .= '</div><br>';
-
-			/* Individual download table */
-			$html .= '<table class="ipsTable ipsTable_zebra">';
-			$html .= '<thead><tr><th>Plugin</th><th>Version</th><th></th></tr></thead>';
-			$html .= '<tbody>';
-
-			foreach ( $built as $info )
+			if ( !empty( $built ) )
 			{
-				$xmlUrl = \IPS\Http\Url::internal( 'app=core&module=applications&controller=plugins&do=xbdtPluginDownloadXml&pluginId=' . $info['id'] )->csrf();
+				/* ZIP download button */
+				$zipUrl = \IPS\Http\Url::internal( 'app=core&module=applications&controller=plugins&do=xbdtPluginDownloadZip' )->csrf();
+				$html .= '<p>' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_plugin_download_results_desc' ) . '</p>';
+				$html .= '<div class="ipsButtonBar">';
+				$html .= '<a href="' . $zipUrl . '" class="ipsButton ipsButton_primary ipsButton_medium"><i class="fa fa-file-archive-o"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_plugin_download_all_zip' ) . '</a>';
+				$html .= '</div><br>';
 
-				$html .= '<tr>';
-				$html .= '<td>' . htmlspecialchars( $info['name'] ) . '</td>';
-				$html .= '<td>' . htmlspecialchars( $info['version'] ) . '</td>';
-				$html .= '<td class="ipsTable_wrap"><a href="' . $xmlUrl . '" class="ipsButton ipsButton_light ipsButton_verySmall"><i class="fa fa-download"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_plugin_download_xml' ) . '</a></td>';
-				$html .= '</tr>';
+				/* Individual download table */
+				$html .= '<table class="ipsTable ipsTable_zebra">';
+				$html .= '<thead><tr><th>Plugin</th><th>Version</th><th></th></tr></thead>';
+				$html .= '<tbody>';
+
+				foreach ( $built as $info )
+				{
+					$xmlUrl = \IPS\Http\Url::internal( 'app=core&module=applications&controller=plugins&do=xbdtPluginDownloadXml&pluginId=' . $info['id'] )->csrf();
+
+					$html .= '<tr>';
+					$html .= '<td>' . htmlspecialchars( $info['name'] ) . '</td>';
+					$html .= '<td>' . htmlspecialchars( $info['version'] ) . '</td>';
+					$html .= '<td class="ipsTable_wrap"><a href="' . $xmlUrl . '" class="ipsButton ipsButton_light ipsButton_verySmall"><i class="fa fa-download"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_plugin_download_xml' ) . '</a></td>';
+					$html .= '</tr>';
+				}
+
+				$html .= '</tbody></table>';
 			}
-
-			$html .= '</tbody></table>';
 
 			/* If user chose individual mode, auto-start sequential downloads */
 			if ( $mode === 'individual' )

@@ -329,34 +329,34 @@ class hook474 extends _HOOK_CLASS_
 				$html .= '<div class="ipsButtonBar">';
 				$html .= '<a href="' . $zipUrl . '" class="ipsButton ipsButton_primary ipsButton_medium"><i class="fa fa-file-archive-o"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_download_all_zip' ) . '</a>';
 				$html .= '</div><br>';
-			}
 
-			/* Individual download table */
-			$html .= '<table class="ipsTable ipsTable_zebra">';
-			$html .= '<thead><tr><th>Application</th><th>Version</th><th></th></tr></thead>';
-			$html .= '<tbody>';
+				/* Individual download table */
+				$html .= '<table class="ipsTable ipsTable_zebra">';
+				$html .= '<thead><tr><th>Application</th><th>Version</th><th></th></tr></thead>';
+				$html .= '<tbody>';
 
-			foreach ( $apps as $appKey )
-			{
-				try
+				foreach ( $apps as $appKey )
 				{
-					$application = \IPS\Application::load( $appKey );
-					$appName     = \IPS\Member::loggedIn()->language()->addToStack( '__app_' . $appKey );
-					$tarUrl      = \IPS\Http\Url::internal( 'app=core&module=applications&controller=applications&do=xbdtDownloadTar&appKey=' . $appKey )->csrf();
+					try
+					{
+						$application = \IPS\Application::load( $appKey );
+						$appName     = \IPS\Member::loggedIn()->language()->addToStack( '__app_' . $appKey );
+						$tarUrl      = \IPS\Http\Url::internal( 'app=core&module=applications&controller=applications&do=xbdtDownloadTar&appKey=' . $appKey )->csrf();
 
-					$html .= '<tr>';
-					$html .= '<td>' . htmlspecialchars( $appName ) . '</td>';
-					$html .= '<td>' . htmlspecialchars( $application->version ) . '</td>';
-					$html .= '<td class="ipsTable_wrap"><a href="' . $tarUrl . '" class="ipsButton ipsButton_light ipsButton_verySmall"><i class="fa fa-download"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_download_tar' ) . '</a></td>';
-					$html .= '</tr>';
+						$html .= '<tr>';
+						$html .= '<td>' . htmlspecialchars( $appName ) . '</td>';
+						$html .= '<td>' . htmlspecialchars( $application->version ) . '</td>';
+						$html .= '<td class="ipsTable_wrap"><a href="' . $tarUrl . '" class="ipsButton ipsButton_light ipsButton_verySmall"><i class="fa fa-download"></i> &nbsp;' . \IPS\Member::loggedIn()->language()->addToStack( 'xbdt_download_tar' ) . '</a></td>';
+						$html .= '</tr>';
+					}
+					catch ( \Exception $e )
+					{
+						continue;
+					}
 				}
-				catch ( \Exception $e )
-				{
-					continue;
-				}
+
+				$html .= '</tbody></table>';
 			}
-
-			$html .= '</tbody></table>';
 
 			/* If user chose individual mode, auto-start sequential downloads via JS */
 			if ( $mode === 'individual' AND !empty( $apps ) )
