@@ -7,13 +7,13 @@
 | Key | Value |
 |---|---|
 | Version | 1.1.2 |
-| Long Version | 10101 |
+| Long Version | 10102 |
 | Type | Plugin |
 
 ## Capabilities
 
 | Capability | Code behavior |
-| --- | --- | --- |
+| --- | --- |
 | Bulk JavaScript compilation | Creates the selected application's JavaScript XML when its data directory is writable, compiles its JavaScript, and compiles `global` when the selected application is `core` |
 | Bulk application build | Calls `build()` for each selected application through a `MultipleRedirect` queue |
 | Application rebuild and download | Builds each selected application, then offers individual TAR downloads and a combined ZIP download |

@@ -41,7 +41,7 @@ Download the latest release from the [Releases](https://github.com/XENNTEC-UG/ip
 
 ### 2. Install via ACP
 
-1. Go to **AdminCP > System > Plugins**
+1. Go to **AdminCP > System > Site Features > Plugins**
 2. Click **Install** and upload the plugin XML file
 3. The bulk operations will appear automatically on the Applications and Plugins pages
 
