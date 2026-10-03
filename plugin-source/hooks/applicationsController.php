@@ -198,7 +198,6 @@ class hook474 extends _HOOK_CLASS_
 
 					$appKey  = $data['apps'][ $data['index'] ];
 					$appName = \IPS\Member::loggedIn()->language()->addToStack( '__app_' . $appKey );
-					$step    = ( $data['index'] + 1 ) . '/' . $data['total'];
 
 					try
 					{

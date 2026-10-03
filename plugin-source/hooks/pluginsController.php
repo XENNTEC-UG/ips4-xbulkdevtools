@@ -171,7 +171,6 @@ class hook475 extends _HOOK_CLASS_
 					}
 
 					$pluginId = $data['plugins'][ $data['index'] ];
-					$step     = ( $data['index'] + 1 ) . '/' . $data['total'];
 
 					try
 					{
